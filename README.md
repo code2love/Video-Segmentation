@@ -4,7 +4,7 @@ Mit diesem Programm kann der Hintergrund in Videosequenzen durch ein einstellbar
 Die Unterscheidung zwischen Vorder- und Hintergrund basiert auf dem "Universial background subtraction algorithm for video sequences"\[[ViBe2011](https://www.researchgate.net/publication/224206851_ViBe_A_Universal_Background_Subtraction_Algorithm_for_Video_Sequences)\] Algorithmus. Zusätzlich wird in einem Postprocessing Schritt Rauschen unterdrückt.
 Das Projekt ist so ausgelegt, dass ohne große Anpassungen auch andere Algorithmen verwendet werden können. Dafür muss lediglich die Implementierung der Funktion `segmentation(...)` geändert werden.
 
-![GUI](cover-image.png)
+![GUI](cover.png)
 
 ## Eingabedaten
 
