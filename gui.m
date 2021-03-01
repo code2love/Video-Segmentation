@@ -22,7 +22,7 @@ function varargout = gui(varargin)
 
 % Edit the above text to modify the response to help gui
 
-% Last Modified by GUIDE v2.5 20-Feb-2021 17:48:09
+% Last Modified by GUIDE v2.5 01-Mar-2021 20:52:13
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -96,7 +96,20 @@ addlistener(handles.text_n, ...
             'PostSet', ...
             @(hObj, evnt) execute_callbacks( ...
                 { ...
+                    @sanitize_text_lag, ...
                     @imagereader_init, ...
+                    @update_images, ...
+                    @draw_images ...
+                }, ...
+                hObject ...
+            ) ...
+);
+addlistener(handles.text_lag, ...
+            'String', ...
+            'PostSet', ...
+            @(hObj, evnt) execute_callbacks( ...
+                { ...
+                    @sanitize_text_lag, ...
                     @update_images, ...
                     @draw_images ...
                 }, ...
@@ -185,6 +198,22 @@ for i = 1:numel(callback_arr)
     end
 end
 
+
+function ret = sanitize_text_lag(figure)
+fprintf('sanitize_text_lag\n')
+handles = guidata(figure);
+
+% Read in tensor size
+n_tensor = str2double(get(handles.text_n,'String'));
+% Read in current lag
+lag = str2double(get(handles.text_lag,'String'));
+
+if lag < 0 || lag > n_tensor
+    set(handles.text_lag, 'String', n_tensor);
+    guidata(figure, handles);
+end
+
+ret = true;
 
 % --- Sanitizes popup_channel_right input.
 function ret = sanitize_popup_channel_right(figure)
@@ -295,6 +324,8 @@ set(handles.button_start_inc, 'Enable', 'on');
 set(handles.button_start_decr, 'Enable', 'on');
 set(handles.button_n_inc, 'Enable', 'on');
 set(handles.button_n_decr, 'Enable', 'on');
+set(handles.button_lag_inc, 'Enable', 'on');
+set(handles.button_lag_decr, 'Enable', 'on');
 set(handles.popup_channel_left, 'Enable', 'on');
 set(handles.popup_channel_right, 'Enable', 'on');
 set(handles.popup_channel_out, 'Enable', 'on');
@@ -310,9 +341,13 @@ function ret = draw_images(figure)
 fprintf('draw_images\n')
 handles = guidata(figure);
 
+% Read in lag value
+lag = str2double(get(handles.text_lag,'String'));
+tensor_idx = (1:3) + (lag*3);
+
 % Show left and right input channel
-imshow(handles.image_left(:, :, 1:3), 'Parent', handles.axes_input_left);
-imshow(handles.image_right(:, :, 1:3), 'Parent', handles.axes_input_right);
+imshow(handles.image_left(:, :, tensor_idx), 'Parent', handles.axes_input_left);
+imshow(handles.image_right(:, :, tensor_idx), 'Parent', handles.axes_input_right);
 
 % Read output channel selection
 outputchannel = get(handles.popup_channel_out,'Value');
@@ -331,7 +366,7 @@ if outputchannel == 1
 else
     tensor_sel = handles.image_right;
 end
-image_output = render(tensor_sel(:, :, 1:3), mask, handles.image_background, rendermode);
+image_output = render(tensor_sel(:, :, tensor_idx), mask, handles.image_background, rendermode);
 imshow(image_output, 'Parent', handles.axes_output);
 
 % Update data
@@ -380,6 +415,8 @@ if loop && ~get(handles.checkbox_loop, 'Value')
     set(handles.button_start_decr, 'Enable', 'on');
     set(handles.button_n_inc, 'Enable', 'on');
     set(handles.button_n_decr, 'Enable', 'on');
+    set(handles.button_lag_inc, 'Enable', 'on');
+    set(handles.button_lag_decr, 'Enable', 'on');
     set(handles.popup_channel_left, 'Enable', 'on');
     set(handles.popup_channel_right, 'Enable', 'on');
 end
@@ -544,7 +581,7 @@ function button_play_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 if strlength(get(handles.text_directory, 'String')) == 0
-    msgbox('Kein Szenenordner ausgewÃ¤hlt!');
+    msgbox('Kein Szenenordner ausgewählt!');
 else
     set(handles.button_play, 'Enable', 'off');
     set(handles.button_pause, 'Enable', 'on');
@@ -554,6 +591,8 @@ else
     set(handles.button_start_decr, 'Enable', 'off');
     set(handles.button_n_inc, 'Enable', 'off');
     set(handles.button_n_decr, 'Enable', 'off');
+    set(handles.button_lag_inc, 'Enable', 'off');
+    set(handles.button_lag_decr, 'Enable', 'off');
     set(handles.popup_channel_left, 'Enable', 'off');
     set(handles.popup_channel_right, 'Enable', 'off');
     start(handles.timer_playback);
@@ -630,6 +669,10 @@ imreader = ImageReader(src, L, R, start, N);
 contents = cellstr(get(handles.popup_mode,'String'));
 rendermode = contents{get(handles.popup_mode,'Value')};
 
+% Read in lag value
+lag = str2double(get(handles.text_lag,'String'));
+tensor_idx = (1:3) + (lag*3);
+
 prompt = {'Wie viele Folgebilder  sollen gerendert werden (-1 für alle) ?'};
 dlgtitle = 'Anzahl Bilder';
 definput = {'-1'};
@@ -676,7 +719,7 @@ while true
     else
         tensor_sel = tensor_right;
     end
-    image_output = render(tensor_sel(:, :, 1:3), mask, handles.image_background, rendermode);
+    image_output = render(tensor_sel(:, :, tensor_idx), mask, handles.image_background, rendermode);
     
     % Save video
     writeVideo(videoWriter,image_output);  
@@ -812,3 +855,44 @@ function popup_channel_out_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+
+function text_lag_Callback(hObject, eventdata, handles)
+% hObject    handle to text_lag (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of text_lag as text
+%        str2double(get(hObject,'String')) returns contents of text_lag as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function text_lag_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to text_lag (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in button_lag_decr.
+function button_lag_decr_Callback(hObject, eventdata, handles)
+% hObject    handle to button_lag_decr (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+number = str2double(get(handles.text_lag,'String'));
+set(handles.text_lag,'String', sprintf("%d", number - 1));
+
+
+% --- Executes on button press in button_lag_inc.
+function button_lag_inc_Callback(hObject, eventdata, handles)
+% hObject    handle to button_lag_inc (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+number = str2double(get(handles.text_lag,'String'));
+set(handles.text_lag,'String', sprintf("%d", number + 1));
